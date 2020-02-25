@@ -31,27 +31,48 @@ typedef struct Instance
 int read_input(Instance *inst, std::string filepath);
 int print_output(std::vector<Library> output, std::string filepath);
 
+int strategy_01(Instance *inst, std::vector<Library> &output);
 int strategy_02(Instance *inst, std::vector<Library>& output);
+int strategy_03(Instance *inst, std::vector<Library>& output);
 
 int main(int argc, char *argv[])
 {
-    if (argc < 2)
+    if (argc < 3)
     {
-        std::cout << "Enter valid file path." << std::endl;
+        std::cout << "Enter strategy (1, 2 or 3) and input file path." << std::endl;
+        std::cout << "Example: ./prog 2 data/example_a.txt" << std::endl;
         return 1;
     }
 
+    int strategy = std::atol(argv[1]);
     Instance inst;
     std::vector<Library> output;
 
-    std::cout << "Reading instance from " << argv[1] << std::endl;
-    read_input(&inst, argv[1]);
+    std::cout << "Reading instance from " << argv[2] << std::endl;
+    read_input(&inst, argv[2]);
     
-    std::cout << "Applying STRATEGY 02" << std::endl;
-    strategy_02(&inst, output);
+    if (strategy == 1)
+    {
+        std::cout << "Applying STRATEGY 01" << std::endl;
+        strategy_01(&inst, output);
+    } else
+    if (strategy == 2)
+    {
+        std::cout << "Applying STRATEGY 02" << std::endl;
+        strategy_02(&inst, output);
+    } else
+    if (strategy == 3)
+    {
+        std::cout << "Applying STRATEGY 03" << std::endl;
+        strategy_03(&inst, output);
+    } else
+    {
+        std::cout << "Strategy " << strategy << " not found." << std::endl;
+        return 1;
+    }
 
     std::cout << "Printing output" << std::endl;
-    print_output(output, argv[1]);
+    print_output(output, argv[2]);
 
     return 0;
 }
@@ -147,29 +168,66 @@ int print_output(std::vector<Library> output, std::string filepath)
     return 0;
 }
 
+/**
+ * Sort libraries by increasing signup time.
+ * 
+ */
+int strategy_01(Instance *inst, std::vector<Library>& output)
+{
+    long i, j;
+    std::unordered_set<long> scannedBooks;
+
+    // sort libraries by increasing signup time
+    std::sort(inst->libraries.begin(), inst->libraries.end(), [] (Library const& l1, Library const& l2) -> bool { return l1.signup < l2.signup; });
+
+    for (i = 0; i < (long)inst->libraries.size(); ++i)
+    {
+        // sort books by decreasing score in current library
+        std::sort(inst->libraries[i].books.begin(), inst->libraries[i].books.end(), [inst] (long const& b1, long const& b2) -> bool { return inst->scores[b1] > inst->scores[b2]; });
+
+        // initialise output library
+        Library outLib;
+        outLib.id = inst->libraries[i].id;
+
+        for (j = 0; j < (long)inst->libraries[i].books.size(); ++j)
+        {
+            // put in output library only books not scanned
+            if (scannedBooks.find(inst->libraries[i].books[j]) == scannedBooks.end())
+            {
+                outLib.books.push_back(inst->libraries[i].books[j]);
+                scannedBooks.insert(inst->libraries[i].books[j]);
+            }
+        }
+
+        output.push_back(outLib);
+    }
+    return 0;
+}
+
 int strategy_02(Instance *inst, std::vector<Library>& output)
 {
-    long iterCnt, d, i, j, left, limit, maxScore, posIndex;
+    long iterCnt, day, i, j, left, limit, maxScore, posIndex;
     Library *pos;
 
     std::unordered_set<int> scannedBooks;
 
-    std::printf("\nDays      = %8ld\n", inst->numDays);
+    std::printf("\n");
+    std::printf("Days      = %8ld\n", inst->numDays);
     std::printf("Books     = %8ld\n", inst->numBooks);
     std::printf("Libraries = %8ld\n", inst->numLibraries);
     std::printf("%8s | %8s | %8s | %8s | %8s\n", "DAY", "DAYS LEF", "LIB ID", "LIB LEFT", "SCANNED");
     std::printf("----------------------------------------------------\n");
 
-    d = 0;
+    day = 0;
     iterCnt = 0;
-    //while ((d < inst->numDays) && (inst->libraries.size() > 0))
     while (inst->libraries.size() > 0)
     {
-        left = inst->numDays - d;
+        left = inst->numDays - day;
 
-        // iterate through each library, update books removing
+        // Iterate through each library, update books removing
         // books already scanned and calculate scores (given the
-        // remaining numbers of days left)
+        // remaining numbers of days left).
+        // In the process, keep the library with maximum score.
         posIndex = -1;
         maxScore = 0;
         for (i = 0; i < (int)inst->libraries.size(); ++i)
@@ -185,17 +243,17 @@ int strategy_02(Instance *inst, std::vector<Library>& output)
 
             limit = (left - inst->libraries[i].signup) * inst->libraries[i].booksPerDay;
 
-            // sort books
-            std::sort(inst->libraries[i].books.begin(), inst->libraries[i].books.end(), [inst] (int const& b1, int const& b2) -> bool { return inst->scores[b1] > inst->scores[b2]; });
+            // sort books by score
+            std::sort(inst->libraries[i].books.begin(), inst->libraries[i].books.end(), [inst] (long const& b1, long const& b2) -> bool { return inst->scores[b1] > inst->scores[b2]; });
 
-            // calculate score
+            // calculate total score for current library
             inst->libraries[i].score = 0;
-            for (int j = 0; (j < limit) && (j < (int)inst->libraries[i].books.size()); ++j)
+            for (j = 0; (j < limit) && (j < (long)inst->libraries[i].books.size()); ++j)
             {
                 inst->libraries[i].score += inst->scores[inst->libraries[i].books[j]];
             }
 
-            // update maximum score
+            // update maximum score library
             if (inst->libraries[i].score > maxScore)
             {
                 maxScore = inst->libraries[i].score;
@@ -211,20 +269,19 @@ int strategy_02(Instance *inst, std::vector<Library>& output)
 
         if (iterCnt % 100 == 0)
         {
-            std::printf("%8ld | %8ld | %8ld | %8lu | %8lu\n", d, left, (*pos).id, inst->libraries.size(), scannedBooks.size());
+            std::printf("%8ld | %8ld | %8ld | %8lu | %8lu\n", day, left, (*pos).id, inst->libraries.size(), scannedBooks.size());
         }
 
         // update output structure
-        d += (*pos).signup;
+        day += (*pos).signup;
         limit = (left - (*pos).signup) * (*pos).booksPerDay;
         
         Library lib;
         lib.id = (*pos).id;
-        //lib.books = std::vector<int>(std::min(limit, (int)(*pos).books.size()));
+        lib.books = std::vector<long>(std::min(limit, (long)(*pos).books.size()));
         for (j = 0; (j < limit) && (j < (int)(*pos).books.size()); ++j)
         {
-            //lib.books[j] = (*pos).books[j];
-            lib.books.push_back((*pos).books[j]);
+            lib.books[j] = (*pos).books[j];
         }
 
         output.push_back(lib);
@@ -235,12 +292,90 @@ int strategy_02(Instance *inst, std::vector<Library>& output)
             scannedBooks.insert((*pos).books[j]);
         }
 
-        //std::printf("8\n");
-        //std::cout << " " << posIndex << " " << inst->libraries.size() << std::endl;
         // remove library
         inst->libraries.erase(inst->libraries.begin() + posIndex);
-        //std::printf("9\n");
+
         iterCnt++;
+    }
+
+    return 0;
+}
+
+/**
+ * Sort all books by decreasing score putting them in a heap.
+ * Pop a book from the heap and find the library containing that book
+ * with the minimum signup time.
+ * Push the library in the output vector and update.
+ */
+int strategy_03(Instance *inst, std::vector<Library>& output)
+{
+    long left, day, i, j, book, minimum, pos, limit;
+
+    std::vector<long> sortedBooks = std::vector<long>(inst->numBooks);
+    std::unordered_set<long> scannedBooks;
+
+    // initialise sorted books and sort by increasing scores
+    // make access from last element
+    for (i = 0; i < inst->numBooks; ++i)
+    {
+        sortedBooks[i] = i;
+    }
+    std::sort(sortedBooks.begin(), sortedBooks.end(), [inst](long const &b1, long const &b2) -> bool { return inst->scores[b1] < inst->scores[b2]; });
+
+    day = 0;
+    while ((sortedBooks.size() > 0) && (inst->libraries.size() > 0))
+    {
+        // get first book not already scanned
+        while (sortedBooks.size() > 0)
+        {
+            book = sortedBooks.back();
+            sortedBooks.pop_back();
+
+            // book not already scanned: ok, stop
+            if (scannedBooks.find(book) == scannedBooks.end())
+            {
+                break;
+            }
+        }
+
+        // scan libraries and find the one containing book
+        // with the lowest signup time
+        minimum = 100000000;
+        pos = -1;
+        for (i = 0; i < (long)inst->libraries.size(); ++i)
+        {
+            // signup is lower and book found
+            if ((inst->libraries[i].signup < minimum) && (std::find(inst->libraries[i].books.begin(), inst->libraries[i].books.end(), book) != inst->libraries[i].books.end()))
+            {
+                minimum = inst->libraries[i].signup;
+                pos = i;
+            }
+        }
+
+        if (pos < 0)
+        {
+            break;
+        }
+
+        // update output structure
+        day += inst->libraries[pos].signup;
+        left = inst->numDays - day;
+        limit = left * inst->libraries[pos].booksPerDay;
+
+        Library lib;
+        lib.id = inst->libraries[pos].id;
+        lib.books = std::vector<long>(std::min(limit, (long)inst->libraries[pos].books.size()));
+        for (j = 0; j < (long)lib.books.size(); ++j)
+        {
+            lib.books[j] = inst->libraries[pos].books[j];
+            scannedBooks.insert(inst->libraries[pos].books[j]);
+        }
+
+        output.push_back(lib);
+
+        // remove library
+        inst->libraries.erase(inst->libraries.begin() + pos);
+
     }
 
     return 0;

@@ -8,8 +8,8 @@ The first thing I tried is also the dumbest one (but why not?!). It starts calcu
 Then I put everything in the solution file: who cares, the scoring software will deal with not counting repeated books or limiting the number of libraries due to the deadline.
 Ok, with python this was so easy and the program was only 15 lines long (well, not including input and output procedures).
 
-|Instance|Score|
-|------|-------:|
+|Instance | Score|
+|---------|-----:|
 |A - example | 21|
 |B - read on | 4,126,100|
 |C - incunabula | 1,413,940|
@@ -21,8 +21,8 @@ Ok, with python this was so easy and the program was only 15 lines long (well, n
 ### Second Attempt: Sorting libraries (by signup time)
 Ok, not a big deal, I just changed 1 line from the previous attempt.
 
-|Instance|Score|
-|------|-------:|
+|Instance | Score|
+|---------|-----:|
 |A - example | 21|
 |B - read on | 5,822,900|
 |C - incunabula | 5,467,966|
@@ -34,8 +34,8 @@ Ok, not a big deal, I just changed 1 line from the previous attempt.
 ### Third Attempt: IDK
 This was quite hard for the poor Python interpreter, so I switched to C++.
 
-|Instance|Score|
-|------|-------:|
+|Instance | Score|
+|---------|-----:|
 |A - example | 21|
 |B - read on | 5,822,900|
 |C - incunabula | 1,480,105|
